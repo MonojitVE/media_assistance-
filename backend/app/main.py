@@ -10,9 +10,11 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Media Assistant Backend")
 
+from app.config import settings
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten before deploying
+    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

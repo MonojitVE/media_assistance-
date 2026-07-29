@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     client_id: str = ""
     client_secret: str = ""
     google_redirect_uri: str = "http://localhost:5173" # Frontend port
+    frontend_url: str = "http://localhost:3000" # Allowed CORS origin
 
     class Config:
         env_file = ".env"

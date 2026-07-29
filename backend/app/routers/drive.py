@@ -17,7 +17,7 @@ def get_flow():
         raise HTTPException(status_code=500, detail="Google client credentials not configured in environment")
         
     client_config = {
-        "installed": {
+        "web": {
             "client_id": settings.client_id,
             "project_id": "smart-media-assistant",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
