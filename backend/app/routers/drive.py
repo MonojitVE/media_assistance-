@@ -43,7 +43,8 @@ def get_auth_url():
     flow = get_flow()
     authorization_url, state = flow.authorization_url(
         access_type='offline',
-        include_granted_scopes='true'
+        include_granted_scopes='true',
+        prompt='consent'
     )
     # Store the PKCE code_verifier generated during auth URL creation
     _oauth_state['code_verifier'] = flow.code_verifier
