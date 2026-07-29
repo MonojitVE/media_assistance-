@@ -28,7 +28,7 @@ class GDriveScanner:
             results = self.service.files().list(
                 q=query,
                 pageSize=100,
-                fields="nextPageToken, files(id, name, mimeType, imageMediaMetadata, videoMediaMetadata, createdTime, size)",
+                fields="nextPageToken, files(id, name, mimeType, imageMediaMetadata, videoMediaMetadata, createdTime, size, thumbnailLink, webContentLink)",
                 spaces='drive'
             ).execute()
             
@@ -67,6 +67,12 @@ class GDriveScanner:
         width = None
         height = None
         extra_meta = {}
+        
+        if 'thumbnailLink' in item:
+            # Get a larger thumbnail by replacing the default =s220 with =s1000
+            extra_meta['thumbnailLink'] = item['thumbnailLink'].replace('=s220', '=s1000')
+        if 'webContentLink' in item:
+            extra_meta['webContentLink'] = item['webContentLink']
         
         if media_type == 'image':
             subtype = 'photo'
