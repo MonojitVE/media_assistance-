@@ -40,7 +40,7 @@ export default function Slideshow({ playlist }) {
            </div>
         ) : (
           <img 
-            src={currentImage.filepath} 
+            src={`http://localhost:8000/media/file/${currentImage.id}`} 
             alt={currentImage.filename} 
             className="slide-image"
             onError={handleError}

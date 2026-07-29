@@ -52,10 +52,8 @@ export default function VideoPlayer({ playlist }) {
 
   if (!currentMedia) return null;
 
-  // Construct a URL for the media. Since filepath is likely local (e.g. C:/...), 
-  // browsers won't load it directly. In demo mode, we just show a placeholder if it fails.
-  // Assuming the backend doesn't serve these as static files yet, it will error.
-  const srcUrl = currentMedia.filepath;
+  // Load from the backend endpoint using the media ID
+  const srcUrl = `http://localhost:8000/media/file/${currentMedia.id}`;
 
   return (
     <div className="media-player-container">
@@ -85,6 +83,8 @@ export default function VideoPlayer({ playlist }) {
               onError={handleError}
               autoPlay
               playsInline
+              controls
+              muted
             />
           )
         )}

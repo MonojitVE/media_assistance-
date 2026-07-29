@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Folder, Image as ImageIcon, Video, Music, FileQuestion } from 'lucide-react';
 
-export default function FolderExplorer() {
+export default function FolderExplorer({ selectedFolders = [], onFolderClick }) {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -9,7 +9,9 @@ export default function FolderExplorer() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch('http://localhost:8000/media/stats');
+        const queryParams = new URLSearchParams();
+        selectedFolders.forEach(f => queryParams.append('folders', f));
+        const res = await fetch(`http://localhost:8000/media/stats?${queryParams.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch stats');
         const data = await res.json();
         setStats(data);
@@ -21,7 +23,7 @@ export default function FolderExplorer() {
       }
     };
     fetchStats();
-  }, []);
+  }, [selectedFolders]);
 
   const getIcon = (type) => {
     switch (type) {
@@ -57,7 +59,7 @@ export default function FolderExplorer() {
       <h2 style={{ marginBottom: '2rem', textAlign: 'center' }}>Smart Folders</h2>
       <div className="folder-grid">
         {stats.map((stat, idx) => (
-          <div key={idx} className="folder-card">
+          <div key={idx} className="folder-card" onClick={() => onFolderClick && onFolderClick(stat.type, stat.subtype)}>
             <div className="folder-icon-wrap">
               {getIcon(stat.type)}
             </div>

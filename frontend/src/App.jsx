@@ -1,29 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { FolderOpen } from 'lucide-react';
 import MicButton from './components/MicButton';
 import DisplayPanel from './components/DisplayPanel';
 import VideoPlayer from './components/VideoPlayer';
 import Slideshow from './components/Slideshow';
 import UnknownState from './components/UnknownState';
 import FolderExplorer from './components/FolderExplorer';
+import FolderBrowser from './components/FolderBrowser';
 
 const API_BASE = 'http://localhost:8000';
 
 function App() {
-  const [uiState, setUiState] = useState('idle'); // 'idle' | 'display'
+  const [uiState, setUiState] = useState('idle'); // 'idle' | 'display' | 'browser'
   const [intent, setIntent] = useState(null);
   const [playlist, setPlaylist] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  
+  const [availableFolders, setAvailableFolders] = useState([]);
+  const [selectedFolders, setSelectedFolders] = useState([]);
+  const [scanPath, setScanPath] = useState('');
+  const [browsingFolder, setBrowsingFolder] = useState(null); // String (physical folder)
+  const [browsingSmartFolder, setBrowsingSmartFolder] = useState(null); // Object { type, subtype }
+
+  const fetchFolders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/media/folders`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableFolders(data);
+        // Default to all selected
+        setSelectedFolders(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch folders', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchFolders();
+  }, []);
 
   const handleTranscript = async (text) => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
     try {
+      const bodyPayload = { text };
+      if (selectedFolders.length > 0) {
+        bodyPayload.folders = selectedFolders;
+      }
+
       const res = await fetch(`${API_BASE}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
+        body: JSON.stringify(bodyPayload)
       });
       
       if (!res.ok) throw new Error('API Request failed');
@@ -35,7 +67,6 @@ function App() {
       
     } catch (err) {
       console.error(err);
-      // Fallback to unknown state gracefully
       setIntent({ action: 'unknown' });
       setUiState('display');
     } finally {
@@ -47,6 +78,51 @@ function App() {
     setUiState('idle');
     setIntent(null);
     setPlaylist([]);
+    setBrowsingFolder(null);
+    setBrowsingSmartFolder(null);
+  };
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    try {
+      let url = `${API_BASE}/scan`;
+      if (scanPath.trim()) {
+        url += `?root=${encodeURIComponent(scanPath.trim())}`;
+      }
+      const res = await fetch(url, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Scan failed');
+      const data = await res.json();
+      alert(`Scan complete.\nAdded: ${data.added}\nSkipped: ${data.skipped}\nErrored: ${data.errored}`);
+      fetchFolders();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to scan media folder');
+    } finally {
+      setIsScanning(false);
+      setScanPath('');
+    }
+  };
+
+  const toggleFolder = (folder) => {
+    setSelectedFolders(prev => 
+      prev.includes(folder) 
+        ? prev.filter(f => f !== folder)
+        : [...prev, folder]
+    );
+  };
+
+  const openFolderBrowser = (folder) => {
+    setBrowsingFolder(folder);
+    setBrowsingSmartFolder(null);
+    setUiState('browser');
+  };
+
+  const openSmartFolderBrowser = (type, subtype) => {
+    setBrowsingSmartFolder({ type, subtype });
+    setBrowsingFolder(null);
+    setUiState('browser');
   };
 
   const renderDisplayContent = () => {
@@ -77,10 +153,9 @@ function App() {
     }
     
     if (intent.action === 'explore') {
-      return <FolderExplorer />;
+      return <FolderExplorer selectedFolders={selectedFolders} onFolderClick={openSmartFolderBrowser} />;
     }
 
-    // Default to unknown state
     return <UnknownState onTranscript={handleTranscript} />;
   };
 
@@ -107,12 +182,87 @@ function App() {
               <MicButton onTranscript={handleTranscript} />
             </div>
             
-            <div style={{ width: '100%', maxWidth: '1200px' }}>
-               <FolderExplorer />
+            <div className="dashboard-grid">
+              {/* Left: Folder Management */}
+              <div className="folder-management-panel">
+                <div className="panel-header">
+                  <h3>Media Settings</h3>
+                  <p>Manage and filter your media folders</p>
+                </div>
+                
+                <div className="scan-section">
+                  <input 
+                    type="text" 
+                    placeholder="Custom folder path (optional)" 
+                    value={scanPath}
+                    onChange={(e) => setScanPath(e.target.value)}
+                    className="folder-input"
+                  />
+                  <button onClick={handleScan} disabled={isScanning} className="scan-button">
+                    {isScanning ? 'Scanning...' : 'Scan Folder'}
+                  </button>
+                </div>
+
+                <div className="folder-list-section">
+                  <h4>Indexed Folders</h4>
+                  <p className="text-secondary" style={{fontSize: '0.8rem', marginBottom: '0.5rem'}}>Check to restrict voice commands and stats to specific folders.</p>
+                  {availableFolders.length === 0 ? (
+                    <p className="no-folders">No folders indexed yet.</p>
+                  ) : (
+                    <ul className="folder-list">
+                      {availableFolders.map((folder, idx) => (
+                        <li key={idx} className="folder-list-item">
+                          <label className="folder-checkbox-label">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedFolders.includes(folder)}
+                              onChange={() => toggleFolder(folder)}
+                              className="folder-checkbox"
+                            />
+                            <span className="folder-name" title={folder}>{folder.split(/[\\/]/).pop() || folder}</span>
+                          </label>
+                          <button 
+                            className="browse-btn" 
+                            title="Browse folder contents"
+                            onClick={() => openFolderBrowser(folder)}
+                          >
+                            <FolderOpen size={18} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Folder Explorer */}
+              <div className="stats-panel">
+                <FolderExplorer selectedFolders={selectedFolders} onFolderClick={openSmartFolderBrowser} />
+              </div>
             </div>
           </motion.div>
         )}
         
+        {uiState === 'browser' && (browsingFolder || browsingSmartFolder) && (
+          <motion.div 
+            key="browser" 
+            className="browser-container"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            style={{ width: '100%', height: '100%', padding: '2rem', boxSizing: 'border-box' }}
+          >
+            <FolderBrowser 
+              folderPath={browsingFolder} 
+              smartFolder={browsingSmartFolder}
+              selectedFolders={selectedFolders}
+              onBack={handleClose} 
+              API_BASE={API_BASE} 
+            />
+          </motion.div>
+        )}
+
         {uiState === 'display' && (
           <DisplayPanel key="display" onClose={handleClose}>
             {renderDisplayContent()}
