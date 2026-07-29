@@ -1,4 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Body
+from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
+from app.database import get_db
+from app.models import Media
 from pydantic import BaseModel
 import google_auth_oauthlib.flow
 import os
@@ -49,7 +53,7 @@ class TokenRequest(BaseModel):
     code: str
 
 @router.post("/auth/token")
-def exchange_token(req: TokenRequest):
+def exchange_token(req: TokenRequest, db: Session = Depends(get_db)):
     os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     flow = get_flow()
@@ -62,10 +66,25 @@ def exchange_token(req: TokenRequest):
         flow.fetch_token(code=req.code)
         credentials = flow.credentials
         
-        # Save credentials for later backend usage (proxying video/audio)
-        token_path = os.path.join(os.path.dirname(__file__), "..", "token.json")
-        with open(token_path, "w") as f:
-            f.write(credentials.to_json())
+        # Save credentials to database for persistent backend proxying across Render restarts
+        import json
+        token_data = json.loads(credentials.to_json())
+        
+        stmt = insert(Media).values(
+            source="config",
+            filepath="config://gdrive_token",
+            filename="gdrive_token",
+            type="config",
+            subtype="token",
+            mime_type="application/json",
+            extra_meta=token_data
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['source', 'filepath'],
+            set_=dict(extra_meta=token_data)
+        )
+        db.execute(stmt)
+        db.commit()
             
         return {
             "access_token": credentials.token,

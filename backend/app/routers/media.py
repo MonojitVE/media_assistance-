@@ -54,13 +54,13 @@ def get_media_file(media_id: int, request: Request, db: Session = Depends(get_db
         
         # For playable media (video/audio), stream the bytes through the backend
         if media.type in ["video", "audio"]:
-            token_path = os.path.join(os.path.dirname(__file__), "..", "token.json")
-            if os.path.exists(token_path):
+            config_media = db.query(Media).filter(Media.source == "config", Media.filepath == "config://gdrive_token").first()
+            if config_media and config_media.extra_meta:
                 try:
                     from google.oauth2.credentials import Credentials
                     from google.auth.transport.requests import AuthorizedSession
                     
-                    creds = Credentials.from_authorized_user_file(token_path)
+                    creds = Credentials.from_authorized_user_info(config_media.extra_meta)
                     authed_session = AuthorizedSession(creds)
                     url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
                     
