@@ -9,7 +9,7 @@ import UnknownState from './components/UnknownState';
 import FolderExplorer from './components/FolderExplorer';
 import FolderBrowser from './components/FolderBrowser';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
 function App() {
   const [uiState, setUiState] = useState('idle'); // 'idle' | 'display' | 'browser'

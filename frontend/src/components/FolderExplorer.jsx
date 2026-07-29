@@ -5,13 +5,14 @@ export default function FolderExplorer({ selectedFolders = [], onFolderClick }) 
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const queryParams = new URLSearchParams();
         selectedFolders.forEach(f => queryParams.append('folders', f));
-        const res = await fetch(`http://localhost:8000/media/stats?${queryParams.toString()}`);
+        const res = await fetch(`${API_BASE}/media/stats?${queryParams.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch stats');
         const data = await res.json();
         setStats(data);

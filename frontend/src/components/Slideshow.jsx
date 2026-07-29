@@ -5,6 +5,7 @@ export default function Slideshow({ playlist }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasError, setHasError] = useState(false);
   const currentImage = playlist[currentIndex];
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
   useEffect(() => {
     setHasError(false);
@@ -40,7 +41,7 @@ export default function Slideshow({ playlist }) {
            </div>
         ) : (
           <img 
-            src={`http://localhost:8000/media/file/${currentImage.id}`} 
+            src={`${API_BASE}/media/file/${currentImage.id}`} 
             alt={currentImage.filename} 
             className="slide-image"
             onError={handleError}

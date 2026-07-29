@@ -13,14 +13,23 @@ SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 _oauth_state = {}
 
 def get_flow():
-    # Use credentials.json directly instead of hardcoding web/installed keys
-    # This automatically supports the downloaded credentials.json structure.
-    creds_path = os.path.join(os.path.dirname(__file__), '..', '..', 'credentials.json')
-    if not os.path.exists(creds_path):
-        raise HTTPException(status_code=500, detail="credentials.json not found in backend folder")
+    if not settings.client_id or not settings.client_secret:
+        raise HTTPException(status_code=500, detail="Google client credentials not configured in environment")
         
-    return google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-        creds_path,
+    client_config = {
+        "installed": {
+            "client_id": settings.client_id,
+            "project_id": "smart-media-assistant",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_secret": settings.client_secret,
+            "redirect_uris": [settings.google_redirect_uri]
+        }
+    }
+    
+    return google_auth_oauthlib.flow.Flow.from_client_config(
+        client_config,
         scopes=SCOPES,
         redirect_uri=settings.google_redirect_uri
     )

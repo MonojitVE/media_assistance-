@@ -6,6 +6,7 @@ export default function VideoPlayer({ playlist }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [hasError, setHasError] = useState(false);
   const mediaRef = useRef(null);
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
   const currentMedia = playlist[currentIndex];
   
@@ -53,7 +54,7 @@ export default function VideoPlayer({ playlist }) {
   if (!currentMedia) return null;
 
   // Load from the backend endpoint using the media ID
-  const srcUrl = `http://localhost:8000/media/file/${currentMedia.id}`;
+  const srcUrl = `${API_BASE}/media/file/${currentMedia.id}`;
 
   return (
     <div className="media-player-container">
