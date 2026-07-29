@@ -9,10 +9,13 @@ router = APIRouter(prefix="/drive", tags=["drive"])
 
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
+# Simple in-memory store for PKCE state (safe for local single-user apps)
+_oauth_state = {}
+
 def get_flow():
     # Use credentials.json directly instead of hardcoding web/installed keys
     # This automatically supports the downloaded credentials.json structure.
-    creds_path = os.path.join(os.path.dirname(__file__), '..', 'credentials.json')
+    creds_path = os.path.join(os.path.dirname(__file__), '..', '..', 'credentials.json')
     if not os.path.exists(creds_path):
         raise HTTPException(status_code=500, detail="credentials.json not found in backend folder")
         
@@ -29,6 +32,8 @@ def get_auth_url():
         access_type='offline',
         include_granted_scopes='true'
     )
+    # Store the PKCE code_verifier generated during auth URL creation
+    _oauth_state['code_verifier'] = flow.code_verifier
     return {"auth_url": authorization_url}
 
 class TokenRequest(BaseModel):
@@ -36,7 +41,14 @@ class TokenRequest(BaseModel):
 
 @router.post("/auth/token")
 def exchange_token(req: TokenRequest):
+    os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     flow = get_flow()
+    
+    # Restore the PKCE code_verifier from memory
+    if 'code_verifier' in _oauth_state:
+        flow.code_verifier = _oauth_state['code_verifier']
+        
     try:
         flow.fetch_token(code=req.code)
         credentials = flow.credentials
@@ -49,6 +61,8 @@ def exchange_token(req: TokenRequest):
             "scopes": credentials.scopes
         }
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 class ScanRequest(BaseModel):
