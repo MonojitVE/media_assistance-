@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-import magic
+import mimetypes
 from PIL import Image
 from mutagen import File as MutagenFile
 
@@ -24,7 +24,8 @@ COMMON_SCREEN_RESOLUTIONS = {
 
 
 def real_mime_type(path: str) -> str:
-    return magic.from_file(path, mime=True)
+    mime, _ = mimetypes.guess_type(path)
+    return mime or "application/octet-stream"
 
 
 def looks_like_screenshot_name(filename: str) -> bool:
