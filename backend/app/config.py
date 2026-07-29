@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     media_root: str = "./media"
     short_media_threshold_sec: int = 120
     groq_api_key: str = ""
+    google_redirect_uri: str = "http://localhost:3000" # Frontend port
 
     class Config:
         env_file = ".env"

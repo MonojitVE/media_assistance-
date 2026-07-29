@@ -32,8 +32,8 @@ def scan_directory(db: Session, root: str | None = None) -> dict:
 
         abs_path = str(file_path.resolve())
 
-        # Skip files already indexed (dedup on filepath)
-        existing = db.query(Media).filter(Media.filepath == abs_path).first()
+        # Skip files already indexed (dedup on source + filepath)
+        existing = db.query(Media).filter(Media.source == "local", Media.filepath == abs_path).first()
         if existing:
             skipped += 1
             continue

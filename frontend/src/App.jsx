@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Cloud } from 'lucide-react';
 import MicButton from './components/MicButton';
 import DisplayPanel from './components/DisplayPanel';
 import VideoPlayer from './components/VideoPlayer';
@@ -23,6 +23,64 @@ function App() {
   const [scanPath, setScanPath] = useState('');
   const [browsingFolder, setBrowsingFolder] = useState(null); // String (physical folder)
   const [browsingSmartFolder, setBrowsingSmartFolder] = useState(null); // Object { type, subtype }
+  const [isDriveConnecting, setIsDriveConnecting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleDriveCallback(code);
+    }
+  }, []);
+
+  const handleDriveCallback = async (code) => {
+    setIsDriveConnecting(true);
+    try {
+      // 1. exchange token
+      const res = await fetch(`${API_BASE}/drive/auth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      if (!res.ok) throw new Error('Failed to exchange token');
+      const tokenData = await res.json();
+      
+      // 2. start scan
+      alert('Google Drive connected! Scanning files... This may take a moment.');
+      const scanRes = await fetch(`${API_BASE}/drive/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          client_id: tokenData.client_id,
+          client_secret: tokenData.client_secret,
+          token_uri: tokenData.token_uri
+        })
+      });
+      if (!scanRes.ok) throw new Error('Drive scan failed');
+      const scanData = await scanRes.json();
+      alert(`Drive Scan complete.\nAdded/Updated: ${scanData.stats.added}\nErrors: ${scanData.stats.errors}`);
+      fetchFolders();
+    } catch (err) {
+      console.error(err);
+      alert('Error during Google Drive integration');
+    } finally {
+      setIsDriveConnecting(false);
+    }
+  };
+
+  const handleConnectDrive = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/drive/auth/url`);
+      const data = await res.json();
+      window.location.href = data.auth_url;
+    } catch (err) {
+      console.error(err);
+      alert('Failed to connect to Google Drive');
+    }
+  };
 
   const fetchFolders = async () => {
     try {
@@ -200,6 +258,13 @@ function App() {
                   />
                   <button onClick={handleScan} disabled={isScanning} className="scan-button">
                     {isScanning ? 'Scanning...' : 'Scan Folder'}
+                  </button>
+                </div>
+
+                <div className="scan-section" style={{ marginTop: '1rem' }}>
+                  <button onClick={handleConnectDrive} disabled={isDriveConnecting} className="scan-button" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: 'var(--primary)' }}>
+                    <Cloud size={18} />
+                    {isDriveConnecting ? 'Connecting...' : 'Connect Google Drive'}
                   </button>
                 </div>
 

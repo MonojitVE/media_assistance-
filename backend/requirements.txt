@@ -11,3 +11,5 @@ mutagen==1.47.0
 python-magic-bin==0.4.14
 ffmpeg-python==0.2.0
 openai
+google-auth-oauthlib
+google-api-python-client

@@ -10,8 +10,9 @@ class Media(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     # File identity
+    source = Column(String, nullable=False, default="local", index=True)
     filename = Column(String, nullable=False)
-    filepath = Column(String, nullable=False, unique=True, index=True)  # absolute path, dedup key
+    filepath = Column(String, nullable=False, index=True)  # absolute path or gdrive URL
     mime_type = Column(String, nullable=False, index=True)
 
     # Classification — this is what your voice queries filter on
@@ -31,5 +32,5 @@ class Media(Base):
     scanned_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("filepath", name="uq_media_filepath"),
+        UniqueConstraint("source", "filepath", name="uq_media_source_filepath"),
     )
