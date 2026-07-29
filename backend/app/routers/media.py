@@ -1,8 +1,8 @@
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -44,18 +44,54 @@ def media_stats(folders: list[str] = Query(default=[]), db: Session = Depends(ge
 
 
 @router.get("/file/{media_id}")
-def get_media_file(media_id: int, db: Session = Depends(get_db)):
+def get_media_file(media_id: int, request: Request, db: Session = Depends(get_db)):
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
         
     if media.source == "gdrive" or media.filepath.startswith("gdrive://"):
-        # Use thumbnailLink or webContentLink if we have them (bypasses cookie issues)
-        url = media.extra_meta.get('thumbnailLink') or media.extra_meta.get('webContentLink')
+        file_id = media.filepath.replace("gdrive://", "")
         
+        # For playable media (video/audio), stream the bytes through the backend
+        if media.type in ["video", "audio"]:
+            token_path = os.path.join(os.path.dirname(__file__), "..", "token.json")
+            if os.path.exists(token_path):
+                try:
+                    from google.oauth2.credentials import Credentials
+                    from google.auth.transport.requests import AuthorizedSession
+                    
+                    creds = Credentials.from_authorized_user_file(token_path)
+                    authed_session = AuthorizedSession(creds)
+                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+                    
+                    headers = {}
+                    if "range" in request.headers:
+                        headers["Range"] = request.headers["range"]
+                        
+                    response = authed_session.get(url, headers=headers, stream=True)
+                    
+                    # Forward necessary headers to support video seeking in browsers
+                    resp_headers = {}
+                    for h in ["Content-Range", "Accept-Ranges", "Content-Length"]:
+                        if h in response.headers:
+                            resp_headers[h] = response.headers[h]
+                    
+                    def generate():
+                        for chunk in response.iter_content(chunk_size=1024 * 1024):
+                            yield chunk
+                            
+                    return StreamingResponse(
+                        generate(),
+                        status_code=response.status_code,
+                        headers=resp_headers,
+                        media_type=media.mime_type
+                    )
+                except Exception as e:
+                    print(f"Error streaming from Google Drive: {e}")
+                    
+        # Fallback to redirect for images (or if streaming fails)
+        url = media.extra_meta.get('thumbnailLink') or media.extra_meta.get('webContentLink')
         if not url:
-            # Fallback to the generic Google Drive viewing URL
-            file_id = media.filepath.replace("gdrive://", "")
             url = f"https://drive.google.com/uc?export=view&id={file_id}"
             
         return RedirectResponse(url)

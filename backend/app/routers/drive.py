@@ -61,6 +61,12 @@ def exchange_token(req: TokenRequest):
     try:
         flow.fetch_token(code=req.code)
         credentials = flow.credentials
+        
+        # Save credentials for later backend usage (proxying video/audio)
+        token_path = os.path.join(os.path.dirname(__file__), "..", "token.json")
+        with open(token_path, "w") as f:
+            f.write(credentials.to_json())
+            
         return {
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
