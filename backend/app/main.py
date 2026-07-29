@@ -12,9 +12,16 @@ app = FastAPI(title="Media Assistant Backend")
 
 from app.config import settings
 
+frontend_url = settings.frontend_url.rstrip("/") if settings.frontend_url else ""
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, "http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        frontend_url, 
+        "http://localhost:3000", 
+        "http://localhost:5173", 
+        "https://media-assistance.vercel.app"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
