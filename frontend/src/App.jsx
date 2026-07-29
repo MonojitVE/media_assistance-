@@ -43,6 +43,10 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
       });
+      
+      // Clear code from URL regardless of success/failure so we don't get stuck in a loop
+      window.history.replaceState({}, document.title, window.location.pathname);
+
       if (!res.ok) throw new Error('Failed to exchange token');
       const tokenData = await res.json();
       

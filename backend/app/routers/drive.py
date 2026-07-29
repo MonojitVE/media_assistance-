@@ -74,12 +74,14 @@ def exchange_token(req: TokenRequest):
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
+from typing import Optional
+
 class ScanRequest(BaseModel):
     access_token: str
-    refresh_token: str = None
-    client_id: str = None
-    client_secret: str = None
-    token_uri: str = None
+    refresh_token: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    token_uri: Optional[str] = None
 
 @router.post("/scan")
 def scan_drive(req: ScanRequest):
