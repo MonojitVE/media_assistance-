@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FolderOpen, Cloud } from 'lucide-react';
+import { FolderOpen, Cloud, CloudOff } from 'lucide-react';
 import MicButton from './components/MicButton';
 import DisplayPanel from './components/DisplayPanel';
 import VideoPlayer from './components/VideoPlayer';
@@ -24,15 +24,36 @@ function App() {
   const [browsingFolder, setBrowsingFolder] = useState(null); // String (physical folder)
   const [browsingSmartFolder, setBrowsingSmartFolder] = useState(null); // Object { type, subtype }
   const [isDriveConnecting, setIsDriveConnecting] = useState(false);
+  const [isDriveDisconnecting, setIsDriveDisconnecting] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    if (code) {
-      window.history.replaceState({}, document.title, window.location.pathname);
-      handleDriveCallback(code);
-    }
+    const initApp = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        handleDriveCallback(code);
+      } else {
+        fetchFolders();
+      }
+    };
+    initApp();
   }, []);
+
+  const handleDisconnectDrive = async () => {
+    setIsDriveDisconnecting(true);
+    try {
+      const res = await fetch(`${API_BASE}/drive/disconnect`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to disconnect');
+      alert('Google Drive disconnected successfully.');
+      fetchFolders();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to disconnect Google Drive');
+    } finally {
+      setIsDriveDisconnecting(false);
+    }
+  };
 
   const handleDriveCallback = async (code) => {
     setIsDriveConnecting(true);
@@ -100,9 +121,7 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    fetchFolders();
-  }, []);
+  // Removed extra fetchFolders useEffect since it is now called in the initApp useEffect.
 
   const handleTranscript = async (text) => {
     if (!text.trim()) return;
@@ -269,6 +288,10 @@ function App() {
                   <button onClick={handleConnectDrive} disabled={isDriveConnecting} className="scan-button" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: 'var(--primary)' }}>
                     <Cloud size={18} />
                     {isDriveConnecting ? 'Connecting...' : 'Connect Google Drive'}
+                  </button>
+                  <button onClick={handleDisconnectDrive} disabled={isDriveDisconnecting} className="scan-button" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', backgroundColor: '#e74c3c', marginTop: '0.5rem' }}>
+                    <CloudOff size={18} />
+                    {isDriveDisconnecting ? 'Disconnecting...' : 'Disconnect Drive'}
                   </button>
                 </div>
 

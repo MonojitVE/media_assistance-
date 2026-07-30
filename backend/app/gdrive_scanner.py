@@ -42,8 +42,6 @@ class GDriveScanner:
                         print(f"Error processing {item.get('name')}: {e}")
                         stats["errors"] += 1
                         
-                db.commit()
-                
             return stats
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -55,11 +53,17 @@ class GDriveScanner:
         mime_type = item['mimeType']
         created_time_str = item.get('createdTime')
         
+        filepath = f"gdrive://{file_id}"
+        
+        # Skip files already indexed (dedup on source + filepath)
+        existing = db.query(Media).filter(Media.source == "gdrive", Media.filepath == filepath).first()
+        if existing:
+            stats["skipped"] += 1
+            return
+            
         created_time = None
         if created_time_str:
             created_time = datetime.datetime.fromisoformat(created_time_str.replace('Z', '+00:00'))
-            
-        filepath = f"gdrive://{file_id}"
         
         media_type = mime_type.split('/')[0]
         subtype = "unknown"
@@ -100,28 +104,24 @@ class GDriveScanner:
         elif media_type == 'audio':
             subtype = 'audio'
             
-        stmt = insert(Media).values(
-            source="gdrive",
-            filename=filename,
-            filepath=filepath,
-            mime_type=mime_type,
-            type=media_type,
-            subtype=subtype,
-            duration_sec=duration,
-            width=width,
-            height=height,
-            extra_meta=extra_meta,
-            file_created_at=created_time
-        )
-        
-        update_dict = {
-            c.name: c for c in stmt.excluded if not c.primary_key
-        }
-        
-        stmt = stmt.on_conflict_do_update(
-            index_elements=['source', 'filepath'],
-            set_=update_dict
-        )
-        
-        db.execute(stmt)
-        stats["added"] += 1
+        try:
+            media = Media(
+                source="gdrive",
+                filename=filename,
+                filepath=filepath,
+                mime_type=mime_type,
+                type=media_type,
+                subtype=subtype,
+                duration_sec=duration,
+                width=width,
+                height=height,
+                extra_meta=extra_meta,
+                file_created_at=created_time
+            )
+            db.add(media)
+            db.commit()
+            stats["added"] += 1
+        except Exception as e:
+            print(f"Database error for {filename}: {e}")
+            db.rollback()
+            stats["errors"] += 1

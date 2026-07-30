@@ -125,3 +125,14 @@ def scan_drive(req: ScanRequest):
         return {"status": "success", "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/disconnect")
+def disconnect_drive(db: Session = Depends(get_db)):
+    try:
+        db.query(Media).filter(Media.source.in_(["gdrive", "config"])).delete(synchronize_session=False)
+        db.commit()
+        return {"status": "success", "message": "Drive connection and scanned items removed."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
