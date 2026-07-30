@@ -79,7 +79,15 @@ class GDriveScanner:
             extra_meta['webContentLink'] = item['webContentLink']
         
         if media_type == 'image':
-            subtype = 'photo'
+            from app.classifier import looks_like_whatsapp_name, looks_like_screenshot_name
+            
+            if looks_like_whatsapp_name(filename):
+                subtype = 'whatsapp'
+            elif looks_like_screenshot_name(filename):
+                subtype = 'screenshot'
+            else:
+                subtype = 'photo'
+                
             metadata = item.get('imageMediaMetadata', {})
             width = metadata.get('width')
             height = metadata.get('height')

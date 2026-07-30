@@ -52,44 +52,43 @@ def get_media_file(media_id: int, request: Request, db: Session = Depends(get_db
     if media.source == "gdrive" or media.filepath.startswith("gdrive://"):
         file_id = media.filepath.replace("gdrive://", "")
         
-        # For playable media (video/audio), stream the bytes through the backend
-        if media.type in ["video", "audio"]:
-            config_media = db.query(Media).filter(Media.source == "config", Media.filepath == "config://gdrive_token").first()
-            if config_media and config_media.extra_meta:
-                try:
-                    from google.oauth2.credentials import Credentials
-                    from google.auth.transport.requests import AuthorizedSession
+        # Stream ALL media (including images) through the backend
+        config_media = db.query(Media).filter(Media.source == "config", Media.filepath == "config://gdrive_token").first()
+        if config_media and config_media.extra_meta:
+            try:
+                from google.oauth2.credentials import Credentials
+                from google.auth.transport.requests import AuthorizedSession
+                
+                creds = Credentials.from_authorized_user_info(config_media.extra_meta)
+                authed_session = AuthorizedSession(creds)
+                url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+                
+                headers = {}
+                if "range" in request.headers:
+                    headers["Range"] = request.headers["range"]
                     
-                    creds = Credentials.from_authorized_user_info(config_media.extra_meta)
-                    authed_session = AuthorizedSession(creds)
-                    url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
-                    
-                    headers = {}
-                    if "range" in request.headers:
-                        headers["Range"] = request.headers["range"]
+                response = authed_session.get(url, headers=headers, stream=True)
+                
+                # Forward necessary headers
+                resp_headers = {}
+                for h in ["Content-Range", "Accept-Ranges", "Content-Length"]:
+                    if h in response.headers:
+                        resp_headers[h] = response.headers[h]
+                
+                def generate():
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        yield chunk
                         
-                    response = authed_session.get(url, headers=headers, stream=True)
-                    
-                    # Forward necessary headers to support video seeking in browsers
-                    resp_headers = {}
-                    for h in ["Content-Range", "Accept-Ranges", "Content-Length"]:
-                        if h in response.headers:
-                            resp_headers[h] = response.headers[h]
-                    
-                    def generate():
-                        for chunk in response.iter_content(chunk_size=1024 * 1024):
-                            yield chunk
-                            
-                    return StreamingResponse(
-                        generate(),
-                        status_code=response.status_code,
-                        headers=resp_headers,
-                        media_type=media.mime_type
-                    )
-                except Exception as e:
-                    print(f"Error streaming from Google Drive: {e}")
-                    
-        # Fallback to redirect for images (or if streaming fails)
+                return StreamingResponse(
+                    generate(),
+                    status_code=response.status_code,
+                    headers=resp_headers,
+                    media_type=media.mime_type
+                )
+            except Exception as e:
+                print(f"Error streaming from Google Drive: {e}")
+                
+        # Fallback to redirect if streaming fails or token missing
         url = media.extra_meta.get('thumbnailLink') or media.extra_meta.get('webContentLink')
         if not url:
             url = f"https://drive.google.com/uc?export=view&id={file_id}"

@@ -33,6 +33,17 @@ def looks_like_screenshot_name(filename: str) -> bool:
     return any(re.match(p, lower) for p in SCREENSHOT_FILENAME_PATTERNS)
 
 
+WHATSAPP_FILENAME_PATTERNS = [
+    r"^whatsapp image",
+    r"^whatsapp video",
+    r"^img-\d{8}-wa\d+",
+    r"^vid-\d{8}-wa\d+",
+]
+
+def looks_like_whatsapp_name(filename: str) -> bool:
+    lower = filename.lower()
+    return any(re.match(p, lower) for p in WHATSAPP_FILENAME_PATTERNS)
+
 def get_image_exif(path: str) -> dict:
     try:
         img = Image.open(path)
@@ -53,7 +64,9 @@ def classify_image(path: str, filename: str) -> dict:
     # Strongest signal: real camera metadata
     has_camera_meta = bool(exif.get("Make") or exif.get("Model"))
 
-    if has_camera_meta:
+    if looks_like_whatsapp_name(filename):
+        subtype = "whatsapp"
+    elif has_camera_meta:
         subtype = "photo"
     elif looks_like_screenshot_name(filename) or (width, height) in COMMON_SCREEN_RESOLUTIONS:
         subtype = "screenshot"
@@ -80,7 +93,11 @@ def classify_video(path: str) -> dict:
     duration = float(data["format"].get("duration", 0))
     video_stream = next((s for s in data["streams"] if s["codec_type"] == "video"), {})
 
-    subtype = "short" if duration < settings.short_media_threshold_sec else "long"
+    p = Path(path)
+    if looks_like_whatsapp_name(p.name):
+        subtype = "whatsapp"
+    else:
+        subtype = "short" if duration < settings.short_media_threshold_sec else "long"
 
     return {
         "type": "video",
