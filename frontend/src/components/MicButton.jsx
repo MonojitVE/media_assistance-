@@ -43,11 +43,18 @@ export default function MicButton({ onTranscript }) {
     }
   }, [onTranscript]);
 
-  const toggleListening = () => {
+  const toggleListening = async () => {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
-      recognitionRef.current?.start();
+      try {
+        // Force the browser to initialize the microphone and verify permissions
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        recognitionRef.current?.start();
+      } catch (err) {
+        console.error("Microphone error:", err);
+        setStatus('Microphone access denied or unavailable');
+      }
     }
   };
 

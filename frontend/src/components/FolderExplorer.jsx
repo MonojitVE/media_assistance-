@@ -5,7 +5,7 @@ export default function FolderExplorer({ selectedFolders = [], onFolderClick }) 
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8005';
 
   useEffect(() => {
     const fetchStats = async () => {

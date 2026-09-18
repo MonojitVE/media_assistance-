@@ -9,7 +9,7 @@ import UnknownState from './components/UnknownState';
 import FolderExplorer from './components/FolderExplorer';
 import FolderBrowser from './components/FolderBrowser';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8005';
 
 function App() {
   const [uiState, setUiState] = useState('idle'); // 'idle' | 'display' | 'browser'
@@ -17,6 +17,7 @@ function App() {
   const [playlist, setPlaylist] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [textCommand, setTextCommand] = useState('');
   
   const [availableFolders, setAvailableFolders] = useState([]);
   const [selectedFolders, setSelectedFolders] = useState([]);
@@ -123,7 +124,7 @@ function App() {
 
   // Removed extra fetchFolders useEffect since it is now called in the initApp useEffect.
 
-  const handleTranscript = async (text) => {
+  const handleTranscript = React.useCallback(async (text) => {
     if (!text.trim()) return;
     
     setIsProcessing(true);
@@ -152,6 +153,14 @@ function App() {
       setUiState('display');
     } finally {
       setIsProcessing(false);
+    }
+  }, [selectedFolders]);
+
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+    if (textCommand.trim()) {
+      handleTranscript(textCommand);
+      setTextCommand('');
     }
   };
 
@@ -261,6 +270,18 @@ function App() {
                 )}
               </div>
               <MicButton onTranscript={handleTranscript} />
+              <form onSubmit={handleTextSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <input 
+                  type="text" 
+                  value={textCommand} 
+                  onChange={(e) => setTextCommand(e.target.value)}
+                  placeholder="Or type a command..." 
+                  style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-primary)', width: '250px', outline: 'none' }}
+                />
+                <button type="submit" className="scan-button" style={{ borderRadius: '20px', padding: '0.5rem 1rem', minWidth: 'auto' }}>
+                  Send
+                </button>
+              </form>
             </div>
             
             <div className="dashboard-grid">

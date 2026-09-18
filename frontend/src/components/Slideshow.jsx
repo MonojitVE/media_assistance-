@@ -5,7 +5,7 @@ export default function Slideshow({ playlist }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [hasError, setHasError] = useState(false);
   const currentImage = playlist[currentIndex];
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8005';
 
   useEffect(() => {
     setHasError(false);

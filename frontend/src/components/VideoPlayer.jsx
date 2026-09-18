@@ -6,7 +6,7 @@ export default function VideoPlayer({ playlist }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [hasError, setHasError] = useState(false);
   const mediaRef = useRef(null);
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8005';
 
   const currentMedia = playlist[currentIndex];
   
@@ -73,7 +73,6 @@ export default function VideoPlayer({ playlist }) {
               className="audio-element"
               onEnded={handleNext}
               onError={handleError}
-              autoPlay
             />
           ) : (
             <video 
@@ -82,7 +81,6 @@ export default function VideoPlayer({ playlist }) {
               className="video-element"
               onEnded={handleNext}
               onError={handleError}
-              autoPlay
               playsInline
               controls
               muted

@@ -97,7 +97,7 @@ def get_media_file(media_id: int, request: Request, db: Session = Depends(get_db
         
     if not os.path.exists(media.filepath):
         raise HTTPException(status_code=404, detail="File not found on disk")
-    return FileResponse(media.filepath)
+    return FileResponse(media.filepath, media_type=media.mime_type)
 
 
 @router.get("/folders")

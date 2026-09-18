@@ -17,6 +17,9 @@ def parse_command(text: str) -> dict:
     Uses Groq LLM to convert a natural language command into a structured JSON intent.
     Falls back to a basic unknown intent if API fails or key is missing.
     """
+    if text == "DEBUG_RELOAD_TEST":
+        return {"action": "play", "type": "video", "raw_text": "RELOAD_SUCCESS"}
+
     if not settings.groq_api_key:
         print("[WARNING] No GROQ_API_KEY set. Cannot parse intent intelligently.")
         return {"action": "unknown", "raw_text": text}
@@ -42,7 +45,7 @@ Always return a valid JSON object matching this schema. Do not include markdown 
 """
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}
@@ -61,7 +64,7 @@ Always return a valid JSON object matching this schema. Do not include markdown 
         
     except ValidationError as ve:
         print(f"[ERROR] LLM returned invalid schema: {ve}")
-        return {"action": "unknown", "raw_text": text}
+        return {"action": "unknown", "raw_text": f"Validation Error: {ve}"}
     except Exception as e:
         print(f"[ERROR] Groq API error: {e}")
-        return {"action": "unknown", "raw_text": text}
+        return {"action": "unknown", "raw_text": f"Groq Error: {str(e)}"}
